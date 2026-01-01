@@ -1,5 +1,10 @@
 pipeline {
   agent any
+
+  tools {
+    jdk 'jdk-21' 
+  }
+
   environment {
     // Windows'ta environment değişkenleri bazen farklı davranabilir ama bu genellikle sorun çıkarmaz
     MAVEN_OPTS = "-Dmaven.test.failure.ignore=false"
