@@ -44,6 +44,13 @@ services:
       SPRING_REDIS_HOST: redis
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+    healthcheck:
+      # Spring Boot Actuator health endpoint'ini kontrol eder
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # --- Frontend (React + Nginx) ---
   ydg-frontend:
