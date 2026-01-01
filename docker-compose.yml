@@ -23,9 +23,9 @@ services:
       - "6379:6379"
 
   # --- Backend (Spring Boot) ---
-  ydg-backend:                  # Servis ismini güncelledim
-    image: ydg-backend:latest   # Jenkinsfile'da oluşturduğumuz imaj ismi
-    build: ./YdgBackend         # <--- SENİN KLASÖR İSMİN (Büyük harfe dikkat)
+  ydg-backend:
+    image: ydg-backend:latest
+    build: ./YdgBackend         # Maven projesinin olduğu klasör
     container_name: ydg-backend-container
     depends_on:
       db:
@@ -43,15 +43,17 @@ services:
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
 
-  # --- Frontend (React) ---
-  ydg-frontend:                 # Servis ismini güncelledim
-    image: ydg-frontend:latest  # Jenkinsfile'da oluşturduğumuz imaj ismi
-    build: ./ydgfrontend        # <--- SENİN KLASÖR İSMİN (Küçük harfe dikkat)
+  # --- Frontend (React + Nginx) ---
+  ydg-frontend:
+    image: ydg-frontend:latest
+    build:
+      context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
+      args:
+        # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
+        - REACT_APP_API_URL=http://localhost:8080 
     container_name: ydg-frontend-container
     depends_on:
       - ydg-backend
     ports:
-      - "3000:3000"
-    environment:
-      # React backend'e tarayıcı üzerinden ulaşır, bu yüzden localhost kalmalı
-      REACT_APP_API_URL: http://localhost:8080
+      # Sol taraf Bilgisayarın (Host), Sağ taraf Nginx'in (Container) portu
+      - "3000:80"
