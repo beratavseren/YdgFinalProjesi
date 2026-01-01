@@ -67,5 +67,3 @@ services:
     shm_size: "2gb" # Chrome'un çökmemesi için bellek ayarı
     depends_on:
       - ydg-frontend # Frontend ayağa kalkmadan Chrome kalkmasın
-    networks:
-      - default
