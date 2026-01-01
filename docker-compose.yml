@@ -41,7 +41,13 @@ services:
       SPRING_DATASOURCE_USERNAME: demo
       SPRING_DATASOURCE_PASSWORD: demo
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      
+      # --- Redis Ayarları (Kritik Düzeltme) ---
+      # Spring Boot versiyonuna göre ikisinden birini kesin yakalar:
+      SPRING_DATA_REDIS_HOST: redis
       SPRING_REDIS_HOST: redis
+      
+      # --- Actuator Ayarları ---
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
     healthcheck:
