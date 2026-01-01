@@ -7,10 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,23 +28,20 @@ public class SmokeE2ETest {
     private final String baseUrl = System.getProperty("e2e.baseUrl", "http://localhost:3000");
 
     @BeforeEach
-    void setup() {
-        // HtmlUnitDriver Ayarları
-        driver = new HtmlUnitDriver(true) {
-            // JavaScript hatalarını (React uyarılarını) görmezden gelmesi için ayar
-            // Bu kısım Override edilerek WebClient ayarları gevşetilir
-            @Override
-            protected com.gargoylesoftware.htmlunit.WebClient modifyWebClient(com.gargoylesoftware.htmlunit.WebClient client) {
-                final com.gargoylesoftware.htmlunit.WebClient webClient = super.modifyWebClient(client);
-                webClient.getOptions().setThrowExceptionOnScriptError(false); // JS hatasında patlama
-                webClient.getOptions().setCssEnabled(false); // CSS render etmeye çalışma (Hızlanır)
-                webClient.getOptions().setThrowExceptionOnFailingStatusCode(false);
-                return webClient;
-            }
-        };
+    void setup() throws MalformedURLException {
+        ChromeOptions options = new ChromeOptions();
+        // Docker içindeki Chrome zaten headless gibidir ama yine de ekleyelim
+        options.addArguments("--headless=new");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--remote-allow-origins=*");
 
-        // Akıllı Bekleme (Explicit Wait): Maksimum 10 saniye bekle
-        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        // KRİTİK NOKTA: ChromeDriver yerine RemoteWebDriver kullanıyoruz
+        // Bu sayede testler, Docker içindeki 'selenium-chrome' konteynerine bağlanır.
+        driver = new RemoteWebDriver(new URL("http://localhost:4444/wd/hub"), options);
+
+        wait = new WebDriverWait(driver, Duration.ofSeconds(15));
     }
 
     @AfterEach
