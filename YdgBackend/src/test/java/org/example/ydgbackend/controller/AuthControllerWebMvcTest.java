@@ -4,40 +4,46 @@ import org.example.ydgbackend.Controller.AuthController;
 import org.example.ydgbackend.Entity.Admin;
 import org.example.ydgbackend.Repository.AdminRepo;
 import org.example.ydgbackend.Repository.WerehouseWorkerRepo;
+import org.example.ydgbackend.Security.BlackListService;
+import org.example.ydgbackend.Security.CustomUserDetailsService;
 import org.example.ydgbackend.Security.JwtService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerWebMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    @MockitoBean
     private AdminRepo adminRepo;
+    @MockitoBean
     private WerehouseWorkerRepo workerRepo;
+    @MockitoBean
     private JwtService jwtService;
+    @MockitoBean
     private PasswordEncoder passwordEncoder;
+    @MockitoBean
+    private BlackListService blackListService;
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
-    @BeforeEach
-    void setup() {
-        adminRepo = mock(AdminRepo.class);
-        workerRepo = mock(WerehouseWorkerRepo.class);
-        jwtService = mock(JwtService.class);
-        passwordEncoder = mock(PasswordEncoder.class);
-    }
 
     @Test
     void login_admin_success_returnsToken() throws Exception {
