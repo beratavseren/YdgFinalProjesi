@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # --- Veritabanı ---
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: demo
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # --- Redis ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # --- Backend (Spring Boot) ---
+  ydg-backend:                  # Servis ismini güncelledim
+    image: ydg-backend:latest   # Jenkinsfile'da oluşturduğumuz imaj ismi
+    build: ./YdgBackend         # <--- SENİN KLASÖR İSMİN (Büyük harfe dikkat)
+    container_name: ydg-backend-container
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/demo
+      SPRING_DATASOURCE_USERNAME: demo
+      SPRING_DATASOURCE_PASSWORD: demo
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_REDIS_HOST: redis
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+
+  # --- Frontend (React) ---
+  ydg-frontend:                 # Servis ismini güncelledim
+    image: ydg-frontend:latest  # Jenkinsfile'da oluşturduğumuz imaj ismi
+    build: ./ydgfrontend        # <--- SENİN KLASÖR İSMİN (Küçük harfe dikkat)
+    container_name: ydg-frontend-container
+    depends_on:
+      - ydg-backend
+    ports:
+      - "3000:3000"
+    environment:
+      # React backend'e tarayıcı üzerinden ulaşır, bu yüzden localhost kalmalı
+      REACT_APP_API_URL: http://localhost:8080
