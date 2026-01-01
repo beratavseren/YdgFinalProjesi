@@ -85,7 +85,7 @@ pipeline {
       steps {
         dir('e2e-tests') {
           // sh -> bat olarak değişti
-          bat 'mvn -q -B test'
+          bat 'mvn -B test -De2e.baseUrl=http://ydg-frontend'
         }
       }
       post {
