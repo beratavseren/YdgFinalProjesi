@@ -84,6 +84,7 @@ pipeline {
     stage('Selenium E2E Tests') {
       steps {
         dir('e2e-tests') {
+          sleep 30
           // sh -> bat olarak değişti
           bat 'mvn -B test -De2e.baseUrl=http://ydg-frontend'
         }
