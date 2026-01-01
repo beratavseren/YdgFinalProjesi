@@ -1,11 +1,13 @@
 pipeline {
   agent any
   environment {
+    // Windows'ta environment değişkenleri bazen farklı davranabilir ama bu genellikle sorun çıkarmaz
     MAVEN_OPTS = "-Dmaven.test.failure.ignore=false"
   }
   options {
     timestamps()
-    ansiColor('xterm')
+    // ansiColor eklentisi yüklü değilse aşağıdaki satırı kapalı tut:
+    ansiColor('xterm') 
   }
   stages {
     stage('Checkout') {
@@ -14,36 +16,37 @@ pipeline {
       }
     }
 
-    // --- Backend Build (Klasör: YdgBackend) ---
+    // --- Backend Build ---
     stage('Backend Build') {
       steps {
-        // DİKKAT: Klasör ismini tam olarak 'YdgBackend' yazdık
         dir('YdgBackend') {
-          sh label: 'Maven Clean Package', script: 'mvn -q -B -DskipTests clean package'
+          // sh -> bat olarak değişti
+          bat label: 'Maven Clean Package', script: 'mvn -q -B -DskipTests clean package'
         }
       }
     }
 
-    // --- Unit Tests (Klasör: YdgBackend) ---
+    // --- Unit Tests ---
     stage('Unit Tests (Backend)') {
       steps {
         dir('YdgBackend') {
-          sh label: 'Run Unit Tests', script: 'mvn -q -B -DskipITs test'
+          // sh -> bat olarak değişti
+          bat label: 'Run Unit Tests', script: 'mvn -q -B -DskipITs test'
         }
       }
       post {
         always {
-          // Rapor yolu YdgBackend altında
           junit 'YdgBackend/target/surefire-reports/*.xml'
         }
       }
     }
 
-    // --- Integration Tests (Klasör: YdgBackend) ---
+    // --- Integration Tests ---
     stage('Integration Tests (Backend)') {
       steps {
         dir('YdgBackend') {
-          sh label: 'Run ITs', script: 'mvn -q -B verify -DskipUnitTests'
+          // sh -> bat olarak değişti
+          bat label: 'Run ITs', script: 'mvn -q -B verify -DskipUnitTests'
         }
       }
       post {
@@ -57,11 +60,9 @@ pipeline {
     stage('Docker Build Images') {
       steps {
         script {
-          // Backend imajı: YdgBackend klasöründen üretiliyor
-          sh 'docker build -t ydg-backend:latest ./YdgBackend'
-          
-          // Frontend imajı: ydgfrontend klasöründen üretiliyor
-          sh 'docker build -t ydg-frontend:latest ./ydgfrontend'
+          // sh -> bat olarak değişti
+          bat 'docker build -t ydg-backend:latest ./YdgBackend'
+          bat 'docker build -t ydg-frontend:latest ./ydgfrontend'
         }
       }
     }
@@ -69,15 +70,17 @@ pipeline {
     // --- Sistemi Başlat ---
     stage('System Up (docker-compose)') {
       steps {
-        sh 'docker compose -f docker-compose.yml up -d --wait'
+        // sh -> bat olarak değişti
+        bat 'docker compose -f docker-compose.yml up -d --wait'
       }
     }
 
-    // --- Selenium Testleri (e2e-tests klasörü aynı kalıyor) ---
+    // --- Selenium Testleri ---
     stage('Selenium E2E Tests') {
       steps {
         dir('e2e-tests') {
-          sh 'mvn -q -B test'
+          // sh -> bat olarak değişti
+          bat 'mvn -q -B test'
         }
       }
       post {
@@ -91,9 +94,13 @@ pipeline {
   post {
     always {
       script {
-        try { sh 'docker compose -f docker-compose.yml down -v' } catch (err) { echo "Compose down failed: ${err}" }
+        // sh -> bat olarak değişti. Hata yakalama bloğu korundu.
+        try { 
+            bat 'docker compose -f docker-compose.yml down -v' 
+        } catch (err) { 
+            echo "Compose down failed: ${err}" 
+        }
       }
-      // Artifact arşivlerken YdgBackend yolunu kullanıyoruz
       archiveArtifacts artifacts: 'YdgBackend/target/*.jar', fingerprint: true, onlyIfSuccessful: true
     }
   }
