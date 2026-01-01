@@ -15,7 +15,7 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class SmokeE2E {
+public class SmokeE2ETest {
 
     private WebDriver driver;
     private WebDriverWait wait;
