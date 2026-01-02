@@ -8,6 +8,7 @@ pipeline {
   environment {
     // Windows'ta environment değişkenleri bazen farklı davranabilir ama bu genellikle sorun çıkarmaz
     MAVEN_OPTS = "-Dmaven.test.failure.ignore=false"
+    API_URL = "http://localhost:8080"
   }
   options {
     timestamps()
