@@ -96,7 +96,7 @@ public class SmokeE2ETest {
 
     @Test
     @DisplayName("Senaryo 3: Backend bağlantısı kontrolü (Opsiyonel)")
-    void backend_connection_check() {
+    void backend_connection_check() throws InterruptedException{
         driver.get(baseUrl + "/");
 
         try {
@@ -106,7 +106,7 @@ public class SmokeE2ETest {
             // Eğer backend verisi gelene kadar ekranda "Yükleniyor..." gibi bir şey yazıyorsa
             // onun kaybolmasını beklemek en garantisidir. (Opsiyonel ama önerilir)
             // wait.until(ExpectedConditions.invisibilityOfElementWithText(By.tagName("div"), "Loading..."));
-
+            Thread.sleep(5000);
             // 2. Backend cevabının gelmesi için biraz süre tanımış oluyoruz (Wait sayesinde)
             // Body elementini al
             WebElement body = wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
