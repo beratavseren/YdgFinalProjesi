@@ -55,8 +55,8 @@ services:
       test: "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 40s
 
   # --- Frontend (React + Nginx) ---
   ydg-frontend:
@@ -65,7 +65,7 @@ services:
       context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
       args:
         # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
-        - REACT_APP_API_URL=http://localhost:8080 
+        - REACT_APP_API_URL=http://ydg-backend-container:8080 
     container_name: ydg-frontend-container
     depends_on:
       - ydg-backend
