@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+      
+      
 
   # --- Redis ---
   redis:
@@ -35,7 +37,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # --- Veritabanı Ayarları (application.properties'i ezer) ---
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/demo
       SPRING_DATASOURCE_USERNAME: demo
       SPRING_DATASOURCE_PASSWORD: demo
@@ -49,13 +50,12 @@ services:
       # --- Actuator Ayarları ---
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
-      
-    # --- Healthcheck (WGET ile - çünkü imajda curl olmayabilir) ---
     healthcheck:
+      # Spring Boot Actuator health endpoint'ini kontrol eder
       test: "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
       start_period: 40s
 
   # --- Frontend (React + Nginx) ---
@@ -65,10 +65,11 @@ services:
       context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
       args:
         # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
-        - REACT_APP_API_URL=http://localhost:8080 
+        - REACT_APP_API_URL=http://ydg-backend-container:8080 
     container_name: ydg-frontend-container
     depends_on:
-      - ydg-backend
+      ydg-backend:
+        condition: service_healthy
     ports:
       # Sol taraf Bilgisayarın (Host), Sağ taraf Nginx'in (Container) portu
       - "3000:80"
@@ -81,5 +82,5 @@ services:
       - "7900:7900" # (Opsiyonel) Tarayıcıyı canlı izlemek için VNC portu
     shm_size: "2gb" # Chrome'un çökmemesi için bellek ayarı
     depends_on:
-      - ydg-frontend
-      - ydg-backend # Frontend ayağa kalkmadan Chrome kalkmasın
+      - ydg-frontend # Frontend ayağa kalkmadan Chrome kalkmasın
+      - ydg-backend
