@@ -16,24 +16,31 @@ services:
       timeout: 3s
       retries: 10
       
-      
-
   # --- Redis ---
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      # DÜZELTME: Girintiler (indentation) düzeltildi
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5  
 
   # --- Backend (Spring Boot) ---
   ydg-backend:
+    # image ismi Jenkinsfile'daki build aşamasıyla uyumlu olmalı
     image: ydg-backend:latest
-    build: ./YdgBackend         # Maven projesinin olduğu klasör
+    build: 
+      context: ./YdgBackend
+      dockerfile: Dockerfile
     container_name: ydg-backend-container
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
@@ -42,45 +49,37 @@ services:
       SPRING_DATASOURCE_PASSWORD: demo
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       
-      # --- Redis Ayarları (Kritik Düzeltme) ---
-      # Spring Boot versiyonuna göre ikisinden birini kesin yakalar:
+      # Redis Ayarları
       SPRING_DATA_REDIS_HOST: redis
       SPRING_REDIS_HOST: redis
       
-      # --- Actuator Ayarları ---
+      # Actuator
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
-    healthcheck:
-      # Spring Boot Actuator health endpoint'ini kontrol eder
-      test: "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
 
   # --- Frontend (React + Nginx) ---
   ydg-frontend:
     image: ydg-frontend:latest
     build:
-      context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
+      context: ./ydgfrontend
       args:
-        # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
-        - REACT_APP_API_URL=http://ydg-backend-container:8080 
+        # DÜZELTME: Tarayıcıdan erişim için localhost yapıldı.
+        # Bu sayede hem senin Chrome'un hem Jenkins Selenium'u backend'i bulur.
+        - REACT_APP_API_URL=http://localhost:8080 
     container_name: ydg-frontend-container
     depends_on:
-      ydg-backend:
-        condition: service_healthy
+      ydg-backend
     ports:
-      # Sol taraf Bilgisayarın (Host), Sağ taraf Nginx'in (Container) portu
       - "3000:80"
   
+  # --- Selenium (Test İçin) ---
   selenium-chrome:
     image: selenium/standalone-chrome:latest
     container_name: selenium-chrome-container
     ports:
-      - "4444:4444" # Selenium Hub Portu
-      - "7900:7900" # (Opsiyonel) Tarayıcıyı canlı izlemek için VNC portu
-    shm_size: "2gb" # Chrome'un çökmemesi için bellek ayarı
+      - "4444:4444"
+      - "7900:7900"
+    shm_size: "2gb"
     depends_on:
-      - ydg-frontend # Frontend ayağa kalkmadan Chrome kalkmasın
+      - ydg-frontend
       - ydg-backend
