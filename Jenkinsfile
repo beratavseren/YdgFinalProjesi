@@ -81,6 +81,16 @@ pipeline {
       }
     }
 
+    stage('Warm Up (Stabilization)') {
+      steps {
+        script {
+            echo "Sistem healthcheck'ten geçti. Uygulamanın tam oturması için 30 saniye ek süre bekleniyor..."
+            // Jenkins'in kendi 'sleep' komutu platform bağımsızdır (Windows/Linux fark etmez)
+            sleep 30 
+        }
+      }
+    }
+
     // --- Selenium Testleri ---
     stage('Selenium E2E Tests') {
       steps {
