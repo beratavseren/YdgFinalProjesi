@@ -96,7 +96,7 @@ pipeline {
       steps {
         dir('e2e-tests') {
           // sh -> bat olarak değişti
-          bat 'mvn -B test -De2e.baseUrl=http://host.docker.internal:3000'
+          bat 'mvn -B test -De2e.baseUrl=http://ydg-frontend'
         }
       }
       post {
