@@ -1,6 +1,9 @@
-# --- 2. Aşama: Runtime (Çalıştırma) ---
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-# İlk aşamadan oluşan jar dosyasını kopyalıyoruz
-COPY --from=build /app/target/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+FROM eclipse-temurin:21-jre
+# Çalışma dizini proje adı oldu
+WORKDIR /YdgBackend
+
+# Build aşamasındaki /YdgBackend/target altından alıp, buraya YdgBackend.jar olarak kopyalıyoruz
+COPY --from=build /YdgBackend/target/*.jar YdgBackend.jar
+
+# Başlatma komutu
+ENTRYPOINT ["java", "-jar", "YdgBackend.jar"]
