@@ -42,7 +42,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/public/**").permitAll() // Login/Register açık
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight isteklerine izin ver (Çok önemli!)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()// Preflight isteklerine izin ver (Çok önemli!)
                         .anyRequest().authenticated()
                 );
 
