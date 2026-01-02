@@ -1,9 +1,11 @@
 FROM eclipse-temurin:21-jre
-# Çalışma dizini proje adı oldu
+
+# Uygulama klasörü
 WORKDIR /YdgBackend
 
-# Build aşamasındaki /YdgBackend/target altından alıp, buraya YdgBackend.jar olarak kopyalıyoruz
-COPY --from=build /YdgBackend/target/*.jar YdgBackend.jar
+# Dışarıda oluşturulmuş (target klasöründeki) jar dosyasını
+# içeriye "YdgBackend.jar" adıyla kopyalıyoruz.
+COPY target/*.jar YdgBackend.jar
 
-# Başlatma komutu
+# Uygulamayı başlatıyoruz
 ENTRYPOINT ["java", "-jar", "YdgBackend.jar"]
