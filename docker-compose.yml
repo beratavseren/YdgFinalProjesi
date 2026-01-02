@@ -15,19 +15,21 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-      
-      
+    networks:
+      - app-network
 
   # --- Redis ---
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    networks:
+      - app-network
 
   # --- Backend (Spring Boot) ---
   ydg-backend:
     image: ydg-backend:latest
-    build: ./YdgBackend         # Maven projesinin olduğu klasör
+    build: ./YdgBackend
     container_name: ydg-backend-container
     depends_on:
       db:
@@ -37,50 +39,44 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # DÜZELTME: Docker içinde servis isimlerini kullanıyoruz (localhost yerine db ve redis)
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/demo
       SPRING_DATASOURCE_USERNAME: demo
       SPRING_DATASOURCE_PASSWORD: demo
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      
-      # --- Redis Ayarları (Kritik Düzeltme) ---
-      # Spring Boot versiyonuna göre ikisinden birini kesin yakalar:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_REDIS_HOST: redis
-      
-      # --- Actuator Ayarları ---
-      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
-      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
-    healthcheck:
-      # Spring Boot Actuator health endpoint'ini kontrol eder
-      test: "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
+      # CORS ve Frontend iletişimi için gerekli olabilir
+      SERVER_SERVLET_CONTEXT_PATH: /
+    networks:
+      - app-network
 
   # --- Frontend (React + Nginx) ---
   ydg-frontend:
     image: ydg-frontend:latest
     build:
-      context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
+      context: ./ydgfrontend
       args:
-        # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
-        - REACT_APP_API_URL=http://ydg-backend:8080 
+        # KRİTİK DÜZELTME:
+        # React tarayıcıda çalışır. Tarayıcı "ydg-backend" ismini bilmez.
+        # Tarayıcı backend'e host makinenin 8080 portundan ulaşır.
+        - REACT_APP_API_URL=http://localhost:8080
     container_name: ydg-frontend-container
     depends_on:
       ydg-backend:
-        condition: service_healthy
+        condition: service_started
     ports:
-      # Sol taraf Bilgisayarın (Host), Sağ taraf Nginx'in (Container) portu
       - "3000:80"
-  
+    networks:
+      - app-network
+
   selenium-chrome:
-    image: selenium/standalone-chrome:latest
-    container_name: selenium-chrome-container
+    image: selenium/standalone-chrome
     ports:
-      - "4444:4444" # Selenium Hub Portu
-      - "7900:7900" # (Opsiyonel) Tarayıcıyı canlı izlemek için VNC portu
-    shm_size: "2gb" # Chrome'un çökmemesi için bellek ayarı
-    depends_on:
-      - ydg-frontend # Frontend ayağa kalkmadan Chrome kalkmasın
-      - ydg-backend
+      - "4444:4444"
+      - "7900:7900"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

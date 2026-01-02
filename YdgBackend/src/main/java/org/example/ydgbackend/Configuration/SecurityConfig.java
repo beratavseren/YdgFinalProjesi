@@ -17,8 +17,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod; // Bunu ekledik
 
 import java.util.Arrays;
+import java.util.List; // List importu
 
 @Configuration
 @EnableMethodSecurity
@@ -33,19 +35,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable()) // Stateless REST API'lerde CSRF genelde kapatılır
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS Ayarını buradan al
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/signUp/**", "/actuator/**").permitAll()
-                        .requestMatchers("/stock/**").hasAnyRole("ADMIN", "WORKER")
-                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/auth/**", "/public/**").permitAll() // Login/Register açık
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Preflight isteklerine izin ver (Çok önemli!)
                         .anyRequest().authenticated()
-                )
-                .authenticationProvider(daoAuthenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                );
+
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
@@ -53,17 +55,23 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Hangi adreslerden istek gelebilir? (Docker içindeki isimleri kapsasın diye *)
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // 1. Browser'dan gelen isteklere izin ver (Localhost:3000)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
 
-        // Hangi metodlara izin var?
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Alternatif (Daha esnek ama production için dikkatli kullanılmalı):
+        // configuration.setAllowedOriginPatterns(Arrays.asList("*"));
 
-        // Hangi headerlara izin var?
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        // 2. İzin verilen HTTP metodları
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
 
-        // Cookie/Credential gönderimine izin ver
+        // 3. İzin verilen Headerlar
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+
+        // 4. Cookie veya Auth Header (Bearer Token) gönderimine izin ver
         configuration.setAllowCredentials(true);
+
+        // 5. Frontend'in okuyabileceği headerlar
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
