@@ -6,10 +6,12 @@ pipeline {
   }
 
   environment {
+    // Windows'ta environment değişkenleri bazen farklı davranabilir ama bu genellikle sorun çıkarmaz
     MAVEN_OPTS = "-Dmaven.test.failure.ignore=false"
   }
   options {
     timestamps()
+    // ansiColor eklentisi yüklü değilse aşağıdaki satırı kapalı tut:
     ansiColor('xterm') 
   }
   stages {
@@ -19,13 +21,21 @@ pipeline {
       }
     }
 
-    // --- 1. Testler (Raporlama için Localde Çalışır) ---
-    // Not: Bu aşamalar Docker'dan bağımsızdır, Jenkins makinesinde çalışır.
-    // Amaç: Hızlı feedback almak ve JUnit raporlarını kaydetmek.
-    
+    // --- Backend Build ---
+    stage('Backend Build') {
+      steps {
+        dir('YdgBackend') {
+          // sh -> bat olarak değişti
+          bat label: 'Maven Clean Package', script: 'mvn -q -B -DskipTests clean package'
+        }
+      }
+    }
+
+    // --- Unit Tests ---
     stage('Unit Tests (Backend)') {
       steps {
         dir('YdgBackend') {
+          // sh -> bat olarak değişti
           bat label: 'Run Unit Tests', script: 'mvn -q -B -DskipITs test'
         }
       }
@@ -36,9 +46,11 @@ pipeline {
       }
     }
 
+    // --- Integration Tests ---
     stage('Integration Tests (Backend)') {
       steps {
         dir('YdgBackend') {
+          // sh -> bat olarak değişti
           bat label: 'Run ITs', script: 'mvn -q -B verify -DskipUnitTests'
         }
       }
@@ -49,32 +61,31 @@ pipeline {
       }
     }
 
-    // --- 2. Docker Build (Artık Compose ile) ---
-    // Burası en önemli değişiklik! 
-    // Compose dosyasındaki ayarları (args) okuyarak image oluşturur.
+    // --- Docker Build ---
     stage('Docker Build Images') {
       steps {
         script {
-          // Eski 'docker build' komutları yerine bunu kullanıyoruz:
-          bat 'docker compose -f docker-compose.yml build'
+          // sh -> bat olarak değişti
+          bat 'docker build -t ydg-backend:latest ./YdgBackend'
+          bat 'docker build -t ydg-frontend:latest ./ydgfrontend'
         }
       }
     }
 
-    // --- 3. Sistemi Başlat ---
-    stage('System Up') {
+    // --- Sistemi Başlat ---
+    stage('System Up (docker-compose)') {
       steps {
-        // --wait parametresi healthcheck'lerin 'healthy' olmasını bekler
+        // sh -> bat olarak değişti
         bat 'docker compose -f docker-compose.yml up -d --wait'
       }
     }
 
-    // --- 4. Selenium Testleri ---
+    // --- Selenium Testleri ---
     stage('Selenium E2E Tests') {
       steps {
         dir('e2e-tests') {
-          // Frontend konteynerine ulaşmak için baseUrl veriliyor
-          bat 'mvn -B test -De2e.baseUrl=http://localhost:3000'
+          // sh -> bat olarak değişti
+          bat 'mvn -B test -De2e.baseUrl=http://ydg-frontend'
         }
       }
       post {
@@ -88,15 +99,14 @@ pipeline {
   post {
     always {
       script {
+        // sh -> bat olarak değişti. Hata yakalama bloğu korundu.
         try { 
-            // İş bitince her şeyi temizle
             bat 'docker compose -f docker-compose.yml down -v' 
         } catch (err) { 
             echo "Compose down failed: ${err}" 
         }
       }
-      // ARTIK JAR ARŞİVLEMEYE GEREK YOK (Çünkü jar Docker içinde kaldı)
-      // archiveArtifacts satırı kaldırıldı.
+      archiveArtifacts artifacts: 'YdgBackend/target/*.jar', fingerprint: true, onlyIfSuccessful: true
     }
   }
 }
