@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-alpine
 
 ARG JAR_FILE=target/YdgBackend-0.0.1-SNAPSHOT.jar
 WORKDIR /app
