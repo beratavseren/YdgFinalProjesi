@@ -70,7 +70,7 @@ services:
       context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
       args:
         # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
-        - REACT_APP_API_URL=http://localhost:8080 
+        - REACT_APP_API_URL=http://ydg-backend-container:8080 
     container_name: ydg-frontend-container
     depends_on:
       ydg-backend:
