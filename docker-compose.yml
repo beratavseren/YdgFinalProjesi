@@ -55,13 +55,13 @@ services:
       # --- Actuator Ayarları ---
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
-   # healthcheck:
+    healthcheck:
       # Spring Boot Actuator health endpoint'ini kontrol eder
-   #   test: "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"
-   #   interval: 10s
-   #   timeout: 5s
-   #   retries: 5
-   #   start_period: 40s
+      test: "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   # --- Frontend (React + Nginx) ---
   ydg-frontend:
@@ -73,7 +73,8 @@ services:
         - REACT_APP_API_URL=http://localhost:8080 
     container_name: ydg-frontend-container
     depends_on:
-      - ydg-backend
+      ydg-backend:
+        condition: service_healthy
     ports:
       # Sol taraf Bilgisayarın (Host), Sağ taraf Nginx'in (Container) portu
       - "3000:80"
