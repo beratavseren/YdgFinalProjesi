@@ -15,21 +15,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks:
-      - app-network
 
   # --- Redis ---
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    networks:
-      - app-network
 
   # --- Backend (Spring Boot) ---
   ydg-backend:
     image: ydg-backend:latest
-    build: ./YdgBackend
+    build: ./YdgBackend         # Maven projesinin olduğu klasör
     container_name: ydg-backend-container
     depends_on:
       db:
@@ -39,44 +35,36 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # DÜZELTME: Docker içinde servis isimlerini kullanıyoruz (localhost yerine db ve redis)
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/demo
       SPRING_DATASOURCE_USERNAME: demo
       SPRING_DATASOURCE_PASSWORD: demo
-      SPRING_DATA_REDIS_HOST: redis
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_REDIS_HOST: redis
-      # CORS ve Frontend iletişimi için gerekli olabilir
-      SERVER_SERVLET_CONTEXT_PATH: /
-    networks:
-      - app-network
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
 
   # --- Frontend (React + Nginx) ---
   ydg-frontend:
     image: ydg-frontend:latest
     build:
-      context: ./ydgfrontend
+      context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
       args:
-        # KRİTİK DÜZELTME:
-        # React tarayıcıda çalışır. Tarayıcı "ydg-backend" ismini bilmez.
-        # Tarayıcı backend'e host makinenin 8080 portundan ulaşır.
-        - REACT_APP_API_URL=http://localhost:8080
+        # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
+        - REACT_APP_API_URL=http://localhost:8080 
     container_name: ydg-frontend-container
     depends_on:
-      ydg-backend:
-        condition: service_started
+      - ydg-backend
     ports:
+      # Sol taraf Bilgisayarın (Host), Sağ taraf Nginx'in (Container) portu
       - "3000:80"
-    networks:
-      - app-network
-
+  
   selenium-chrome:
-    image: selenium/standalone-chrome
+    image: selenium/standalone-chrome:latest
+    container_name: selenium-chrome-container
     ports:
-      - "4444:4444"
-      - "7900:7900"
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
+      - "4444:4444" # Selenium Hub Portu
+      - "7900:7900" # (Opsiyonel) Tarayıcıyı canlı izlemek için VNC portu
+    shm_size: "2gb" # Chrome'un çökmemesi için bellek ayarı
+    depends_on:
+      - ydg-frontend
+      - ydg-Backend # Frontend ayağa kalkmadan Chrome kalkmasın
