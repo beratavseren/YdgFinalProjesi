@@ -99,12 +99,29 @@ public class SmokeE2ETest {
     void backend_connection_check() {
         driver.get(baseUrl + "/");
 
-        // App.js içinde backend'den veri çekip ekrana basıyoruz.
-        // Eğer bağlantı hatası varsa ekranda "iletişim kurulamadı" yazar.
-        // Biz hatasız olduğunu doğrulamak istiyoruz.
-        String bodyText = driver.findElement(By.tagName("body")).getText();
+        try {
+            // 1. Sayfanın temel öğelerinin yüklendiğinden emin ol (Örn: Başlık veya Body)
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
 
-        // Basitçe: Sayfada "hata" veya "Error" kelimesi OLMAMALI
-        assertThat(bodyText).doesNotContain("kurulamadı");
+            // Eğer backend verisi gelene kadar ekranda "Yükleniyor..." gibi bir şey yazıyorsa
+            // onun kaybolmasını beklemek en garantisidir. (Opsiyonel ama önerilir)
+            // wait.until(ExpectedConditions.invisibilityOfElementWithText(By.tagName("div"), "Loading..."));
+
+            // 2. Backend cevabının gelmesi için biraz süre tanımış oluyoruz (Wait sayesinde)
+            // Body elementini al
+            WebElement body = wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
+            String bodyText = body.getText();
+
+            // 3. Kontrolü yap
+            // Eğer backend hatası varsa ekrana basılıyor, biz bunun OLMADIĞINI doğruluyoruz.
+            assertThat(bodyText).doesNotContain("kurulamadı");
+            assertThat(bodyText).doesNotContain("Network Error"); // Ekstra önlem
+
+        } catch (Exception e) {
+            // Hata durumunda debug için sayfa kaynağını yazdır
+            System.out.println("HATA ALINDI! Backend kontrolü sırasında sayfa durumu:");
+            System.out.println(driver.getPageSource());
+            throw e; // Testin başarısız olması için hatayı fırlat
+        }
     }
 }
