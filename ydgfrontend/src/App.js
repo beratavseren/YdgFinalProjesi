@@ -1,50 +1,132 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
+
+// Admin Pages
+import AdminDashboard from './pages/admin/Dashboard';
+import Products from './pages/admin/Products';
+import Categories from './pages/admin/Categories';
+import Brands from './pages/admin/Brands';
+import Werehouses from './pages/admin/Werehouses';
+import Stock from './pages/admin/Stock';
+
+// Worker Pages
+import WorkerLanding from './pages/worker/Landing';
+import WorkerProfile from './pages/worker/Profile';
+import WorkerStock from './pages/worker/Stock';
+
+// Home component that redirects based on role
+const Home = () => {
+  const { isAuthenticated, isAdmin, isWorker } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isAdmin()) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (isWorker()) {
+    return <Navigate to="/worker/landing" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
+};
 
 function App() {
-    const [message, setMessage] = useState("Backend'e bağlanılıyor...");
-    const [page, setPage] = useState("home"); // Basit bir sayfa yönlendirmesi (Router kullanmadan)
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          
+          {/* Admin Routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/products"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <Products />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/categories"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <Categories />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/brands"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <Brands />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/werehouses"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <Werehouses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/stock"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <Stock />
+              </ProtectedRoute>
+            }
+          />
 
-    // Backend'den veri çekme (Integration Kanıtı)
-    useEffect(() => {
-        // Docker ortamında localhost:8080'e istek atacağız
-        const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:8080";
-
-        fetch(`${apiUrl}/auth/hello`) // Backend'de böyle bir endpoint olduğunu varsayıyoruz
-            .then(res => {
-                if(res.ok) return res.text();
-                throw new Error("Bağlantı Hatası");
-            })
-            .then(data => setMessage(data))
-            .catch(err => setMessage("Backend ile iletişim kurulamadı: " + err.message));
-    }, []);
-
-    // Basit Sayfa Yönlendirmesi (Testler için)
-    const renderContent = () => {
-        if (page === "hello") {
-            return (
-                <div id="hello-page">
-                    <h2>Hello Page</h2>
-                    <p id="greeting">{message}</p>
-                    <button onClick={() => setPage("home")}>Geri Dön</button>
-                </div>
-            );
-        }
-        return (
-            <div>
-                <h1>Demo App</h1>
-                <p>Yazılım Doğrulama ve Geçerleme Projesi</p>
-                <p>Sistem Durumu: {message}</p>
-                {/* AŞAĞIDAKİ SATIRA id="hello-btn" EKLEDİM */}
-                <button id="hello-btn" onClick={() => setPage("hello")}>Hello Sayfasına Git</button>
-            </div>
-        );
-    };
-
-    return (
-        <div className="App" style={{ padding: "20px", fontFamily: "Arial" }}>
-            {renderContent()}
-        </div>
-    );
+          {/* Worker Routes */}
+          <Route
+            path="/worker/landing"
+            element={
+              <ProtectedRoute requiredRole="WORKER">
+                <WorkerLanding />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/profile"
+            element={
+              <ProtectedRoute requiredRole="WORKER">
+                <WorkerProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/worker/stock"
+            element={
+              <ProtectedRoute requiredRole="WORKER">
+                <WorkerStock />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
 }
 
 export default App;

@@ -8,7 +8,6 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -52,76 +51,63 @@ public class SmokeE2ETest {
     }
 
     @Test
-    @DisplayName("Senaryo 1: Ana sayfa açılmalı")
-    void homePage_shouldRender() {
+    @DisplayName("Senaryo 1: Ana sayfa açılmalı ve login'e yönlendirmeli")
+    void homePage_shouldRedirectToLogin() {
         driver.get(baseUrl + "/");
 
-        // React'in yüklenmesini beklemek için gövdede bir yazı arayalım
-        // 'Demo App' yazısı görünene kadar bekle
-        wait.until(ExpectedConditions.textToBePresentInElementLocated(By.tagName("body"), "Demo App"));
-
+        // Ana sayfa giriş yapmamış kullanıcıyı login'e yönlendirmeli
+        wait.until(ExpectedConditions.urlContains("/login"));
         String bodyText = driver.findElement(By.tagName("body")).getText();
-        assertThat(bodyText).contains("Demo App");
+        assertThat(bodyText).contains("Login");
     }
 
     @Test
-    @DisplayName("Senaryo 2: Hello butonuna basınca sayfa değişmeli")
-    void navigation_shouldWork() {
-        driver.get(baseUrl + "/");
-
-        // HATA ÇÖZÜMÜ:
-        // 1. Text ile değil, ID ile bul (Daha garantidir)
-        // 2. Tıklanabilir olana kadar bekle (Wait)
+    @DisplayName("Senaryo 2: Login sayfası doğru şekilde yüklenmeli")
+    void loginPage_shouldLoadCorrectly() {
+        driver.get(baseUrl + "/login");
 
         try {
-            // Önce sayfanın yüklendiğinden emin ol
-            wait.until(ExpectedConditions.textToBePresentInElementLocated(By.tagName("body"), "Demo App"));
-
-            // Butonun görünür ve tıklanabilir olmasını bekle
-            WebElement button = wait.until(ExpectedConditions.elementToBeClickable(By.id("hello-btn")));
-            button.click();
-
-            // Sayfa geçişini bekle (Hello Page başlığının gelmesini bekle)
-            WebElement helloHeader = wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("h2")));
-
-            assertThat(helloHeader.getText()).isEqualTo("Hello Page");
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+            String bodyText = driver.findElement(By.tagName("body")).getText();
+            
+            // Login sayfasında olmalı
+            assertThat(bodyText).contains("Login");
+            
+            // Form elemanları olmalı
+            WebElement emailInput = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("input[type='email']")
+            ));
+            assertThat(emailInput).isNotNull();
 
         } catch (Exception e) {
-            // Hata alırsak, o an sayfanın ne durumda olduğunu görelim (Debug için çok önemli)
             System.out.println("HATA ALINDI! O anki Sayfa Kaynağı:");
             System.out.println(driver.getPageSource());
-            throw e; // Hatayı tekrar fırlat ki test başarısız sayılsın
+            throw e;
         }
     }
 
     @Test
-    @DisplayName("Senaryo 3: Backend bağlantısı kontrolü (Opsiyonel)")
-    void backend_connection_check() throws InterruptedException{
-        driver.get(baseUrl + "/");
+    @DisplayName("Senaryo 3: Frontend sayfaları yüklenebilmeli")
+    void frontendPages_shouldLoad() {
+        driver.get(baseUrl + "/login");
 
         try {
-            // 1. Sayfanın temel öğelerinin yüklendiğinden emin ol (Örn: Başlık veya Body)
             wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
-
-            // Eğer backend verisi gelene kadar ekranda "Yükleniyor..." gibi bir şey yazıyorsa
-            // onun kaybolmasını beklemek en garantisidir. (Opsiyonel ama önerilir)
-            // wait.until(ExpectedConditions.invisibilityOfElementWithText(By.tagName("div"), "Loading..."));
-            Thread.sleep(5000);
-            // 2. Backend cevabının gelmesi için biraz süre tanımış oluyoruz (Wait sayesinde)
-            // Body elementini al
             WebElement body = wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
             String bodyText = body.getText();
 
-            // 3. Kontrolü yap
-            // Eğer backend hatası varsa ekrana basılıyor, biz bunun OLMADIĞINI doğruluyoruz.
-            assertThat(bodyText).doesNotContain("kurulamadı");
-            assertThat(bodyText).doesNotContain("Network Error"); // Ekstra önlem
+            // Sayfa yüklendi, içerik olmalı
+            assertThat(bodyText).isNotEmpty();
+            
+            // Önemli hata mesajları olmamalı
+            assertThat(bodyText).doesNotContain("Cannot GET");
+            assertThat(bodyText).doesNotContain("404");
+            assertThat(bodyText).doesNotContain("Network Error");
 
         } catch (Exception e) {
-            // Hata durumunda debug için sayfa kaynağını yazdır
-            System.out.println("HATA ALINDI! Backend kontrolü sırasında sayfa durumu:");
+            System.out.println("HATA ALINDI! Sayfa durumu:");
             System.out.println(driver.getPageSource());
-            throw e; // Testin başarısız olması için hatayı fırlat
+            throw e;
         }
     }
 }

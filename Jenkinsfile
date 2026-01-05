@@ -68,7 +68,7 @@ pipeline {
         script {
           // sh -> bat olarak değişti
           bat 'docker build -t ydg-backend:latest ./YdgBackend'
-          bat 'docker build -t ydg-frontend:latest ./ydgfrontend'
+          bat "docker build --build-arg REACT_APP_API_URL=${API_URL} -t ydg-frontend:latest ./ydgfrontend"
         }
       }
     }
