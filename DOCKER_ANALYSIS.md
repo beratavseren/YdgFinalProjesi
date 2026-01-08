@@ -227,3 +227,4 @@ application.properties'te default database adını `demo` yapmak veya environmen
 2. CORS configuration browser access için yeterli (localhost:3000)
 3. SignUp endpoint backend'de permitAll listesine eklenmeli
 
+

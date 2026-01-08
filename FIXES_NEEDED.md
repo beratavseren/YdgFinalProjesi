@@ -88,3 +88,4 @@ Düzeltmeler yapıldıktan sonra:
 3. SignUp endpoint'inin çalıştığını kontrol et
 4. E2E testlerin geçtiğini kontrol et
 
+

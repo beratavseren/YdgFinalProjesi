@@ -49,6 +49,9 @@ pipeline {
 
     // --- Integration Tests ---
     stage('Integration Tests (Backend)') {
+      environment {
+        DOCKER_AVAILABLE = 'true'
+      }
       steps {
         dir('YdgBackend') {
           // sh -> bat olarak değişti

@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-class CategoryControllerWebMvcTest {
+class CategoryControllerWebMvcIT {
 
     MockMvc mockMvc;
 
@@ -96,3 +96,4 @@ class CategoryControllerWebMvcTest {
                 .andExpect(jsonPath("$[1].categoryName").value("B"));
     }
 }
+
