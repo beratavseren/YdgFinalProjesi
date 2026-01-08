@@ -46,7 +46,6 @@ class BrandCategoryRepositoryIT {
 
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 
-        // Eğer hibernate dialect hatası alırsanız bunu da ekleyebilirsiniz:
         registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
     }
 
@@ -68,19 +67,119 @@ class BrandCategoryRepositoryIT {
         brandCategoryRepo.save(new BrandCategory(nike, shoes));
         brandCategoryRepo.save(new BrandCategory(nike, apparel));
 
-        // Query by brand
         List<BrandCategory> byBrand = brandCategoryRepo.findBrandCategoriesByBrand(nike);
         assertThat(byBrand).hasSize(2);
         assertThat(byBrand).extracting(bc -> bc.getCategory().getCategoryName())
                 .containsExactlyInAnyOrder("Shoes", "Apparel");
 
-        // Query by category
         List<BrandCategory> byCategory = brandCategoryRepo.findBrandCategoriesByCategory(shoes);
         assertThat(byCategory).hasSize(1);
         assertThat(byCategory.get(0).getBrand().getBrandName()).isEqualTo("Nike");
 
-        // Delete by brand and verify
         brandCategoryRepo.deleteBrandCategoriesByBrand(nike);
         assertThat(brandCategoryRepo.findBrandCategoriesByBrand(nike)).isEmpty();
+    }
+
+    @Test
+    void save_andQueryRelations_withMultipleBrands() {
+        Brand nike = brandRepo.save(new Brand("Nike"));
+        Brand adidas = brandRepo.save(new Brand("Adidas"));
+        Category shoes = categoryRepo.save(new Category("Shoes"));
+        Category apparel = categoryRepo.save(new Category("Apparel"));
+
+        brandCategoryRepo.save(new BrandCategory(nike, shoes));
+        brandCategoryRepo.save(new BrandCategory(nike, apparel));
+        brandCategoryRepo.save(new BrandCategory(adidas, shoes));
+
+        assertThat(brandCategoryRepo.findBrandCategoriesByBrand(nike)).hasSize(2);
+        assertThat(brandCategoryRepo.findBrandCategoriesByBrand(adidas)).hasSize(1);
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(shoes)).hasSize(2);
+    }
+
+    @Test
+    void deleteBrandCategoriesByCategory_removesAllRelations() {
+        Brand brand = brandRepo.save(new Brand("Brand"));
+        Category cat1 = categoryRepo.save(new Category("Cat1"));
+        Category cat2 = categoryRepo.save(new Category("Cat2"));
+
+        brandCategoryRepo.save(new BrandCategory(brand, cat1));
+        brandCategoryRepo.save(new BrandCategory(brand, cat2));
+
+        List<BrandCategory> before = brandCategoryRepo.findBrandCategoriesByCategory(cat1);
+        assertThat(before).hasSize(1);
+
+        brandCategoryRepo.delete(before.get(0));
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat1)).isEmpty();
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat2)).hasSize(1);
+    }
+
+    @Test
+    void save_andFind_withComplexRelations() {
+        Brand brand1 = brandRepo.save(new Brand("Brand1"));
+        Brand brand2 = brandRepo.save(new Brand("Brand2"));
+        Category cat1 = categoryRepo.save(new Category("Cat1"));
+        Category cat2 = categoryRepo.save(new Category("Cat2"));
+        Category cat3 = categoryRepo.save(new Category("Cat3"));
+
+        brandCategoryRepo.save(new BrandCategory(brand1, cat1));
+        brandCategoryRepo.save(new BrandCategory(brand1, cat2));
+        brandCategoryRepo.save(new BrandCategory(brand1, cat3));
+        brandCategoryRepo.save(new BrandCategory(brand2, cat1));
+        brandCategoryRepo.save(new BrandCategory(brand2, cat3));
+
+        assertThat(brandCategoryRepo.findBrandCategoriesByBrand(brand1)).hasSize(3);
+        assertThat(brandCategoryRepo.findBrandCategoriesByBrand(brand2)).hasSize(2);
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat1)).hasSize(2);
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat2)).hasSize(1);
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat3)).hasSize(2);
+    }
+
+    @Test
+    void deleteBrandCategoriesByBrand_withMultipleCategories_removesAll() {
+        Brand brand = brandRepo.save(new Brand("Brand"));
+        Category cat1 = categoryRepo.save(new Category("Cat1"));
+        Category cat2 = categoryRepo.save(new Category("Cat2"));
+        Category cat3 = categoryRepo.save(new Category("Cat3"));
+
+        brandCategoryRepo.save(new BrandCategory(brand, cat1));
+        brandCategoryRepo.save(new BrandCategory(brand, cat2));
+        brandCategoryRepo.save(new BrandCategory(brand, cat3));
+
+        assertThat(brandCategoryRepo.findBrandCategoriesByBrand(brand)).hasSize(3);
+
+        brandCategoryRepo.deleteBrandCategoriesByBrand(brand);
+
+        assertThat(brandCategoryRepo.findBrandCategoriesByBrand(brand)).isEmpty();
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat1)).isEmpty();
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat2)).isEmpty();
+        assertThat(brandCategoryRepo.findBrandCategoriesByCategory(cat3)).isEmpty();
+    }
+
+    @Test
+    void saveDuplicateBrandCategory_handlesCorrectly() {
+        Brand brand = brandRepo.save(new Brand("Brand"));
+        Category category = categoryRepo.save(new Category("Category"));
+
+        BrandCategory bc1 = brandCategoryRepo.save(new BrandCategory(brand, category));
+        BrandCategory bc2 = brandCategoryRepo.save(new BrandCategory(brand, category));
+
+        // Depending on DB constraints, this might fail or create duplicate
+        // This test verifies the behavior
+        assertThat(bc1.getBrandCategoryId()).isNotNull();
+        assertThat(bc2.getBrandCategoryId()).isNotNull();
+    }
+
+    @Test
+    void findBrandCategoriesByCategory_withNoRelations_returnsEmpty() {
+        Category category = categoryRepo.save(new Category("Isolated"));
+        List<BrandCategory> relations = brandCategoryRepo.findBrandCategoriesByCategory(category);
+        assertThat(relations).isEmpty();
+    }
+
+    @Test
+    void findBrandCategoriesByBrand_withNoRelations_returnsEmpty() {
+        Brand brand = brandRepo.save(new Brand("Isolated"));
+        List<BrandCategory> relations = brandCategoryRepo.findBrandCategoriesByBrand(brand);
+        assertThat(relations).isEmpty();
     }
 }

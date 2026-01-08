@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -136,5 +137,156 @@ class CategoryServiceTest {
         List<CategoryDto> result = categoryService.getCategories();
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void addCategory_withSpecialCharacters_handlesCorrectly() {
+        AddCategoryDto dto = new AddCategoryDto();
+        dto.setCategoryName("Electronics & Appliances");
+        when(categoryRepo.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        boolean result = categoryService.addCategory(dto);
+
+        assertThat(result).isTrue();
+        verify(categoryRepo).save(any(Category.class));
+    }
+
+    @Test
+    void addCategory_withLongName_handlesCorrectly() {
+        AddCategoryDto dto = new AddCategoryDto();
+        dto.setCategoryName("A".repeat(100));
+        when(categoryRepo.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        boolean result = categoryService.addCategory(dto);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void addCategory_handlesException_returnsFalse() {
+        AddCategoryDto dto = new AddCategoryDto();
+        dto.setCategoryName("Fail");
+        when(categoryRepo.save(any(Category.class))).thenThrow(new RuntimeException("DB error"));
+
+        boolean result = categoryService.addCategory(dto);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void updateCategory_withSameName_stillUpdates() {
+        Category existing = new Category(20L, "Same");
+        when(categoryRepo.findCategoryByCategoryId(20L)).thenReturn(existing);
+        when(categoryRepo.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        org.example.ydgbackend.Dto.Category.UpdateCategoryDto dto = new org.example.ydgbackend.Dto.Category.UpdateCategoryDto();
+        dto.setCategoryId(20L);
+        dto.setCategoryName("Same");
+
+        boolean ok = categoryService.updateCategory(dto);
+
+        assertThat(ok).isTrue();
+        verify(categoryRepo).save(existing);
+    }
+
+    @Test
+    void updateCategory_handlesException_returnsFalse() {
+        when(categoryRepo.findCategoryByCategoryId(21L)).thenThrow(new RuntimeException("Not found"));
+
+        org.example.ydgbackend.Dto.Category.UpdateCategoryDto dto = new org.example.ydgbackend.Dto.Category.UpdateCategoryDto();
+        dto.setCategoryId(21L);
+        dto.setCategoryName("Fail");
+
+        boolean ok = categoryService.updateCategory(dto);
+
+        assertThat(ok).isFalse();
+    }
+
+    @Test
+    void deleteCategory_withMultipleBrandCategories_returnsFalse() {
+        Category category = new Category(4L, "Popular");
+        when(categoryRepo.findCategoryByCategoryId(4L)).thenReturn(category);
+        when(brandCategoryRepo.findBrandCategoriesByCategory(category))
+                .thenReturn(Arrays.asList(
+                        new BrandCategory(),
+                        new BrandCategory(),
+                        new BrandCategory()
+                ));
+
+        boolean result = categoryService.deleteCategory(4L);
+
+        assertThat(result).isFalse();
+        verify(categoryRepo, never()).delete(any());
+    }
+
+    @Test
+    void deleteCategory_handlesException_returnsFalse() {
+        when(categoryRepo.findCategoryByCategoryId(5L)).thenThrow(new RuntimeException("DB error"));
+
+        boolean result = categoryService.deleteCategory(5L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void getCategory_withNullCategory_returnsEmptyDto() {
+        when(categoryRepo.findCategoryByCategoryId(99L)).thenReturn(null);
+
+        CategoryDto dto = categoryService.getCategory(99L);
+
+        assertThat(dto.getCategoryId()).isNull();
+        assertThat(dto.getCategoryName()).isNull();
+    }
+
+    @Test
+    void getCategories_withLargeDataset_handlesCorrectly() {
+        List<Category> categories = new ArrayList<>();
+        for (long i = 1; i <= 50; i++) {
+            categories.add(new Category(i, "Category" + i));
+        }
+        when(categoryRepo.findAll()).thenReturn(categories);
+
+        List<CategoryDto> result = categoryService.getCategories();
+
+        assertThat(result).hasSize(50);
+        assertThat(result.get(0).getCategoryId()).isEqualTo(1L);
+        assertThat(result.get(49).getCategoryId()).isEqualTo(50L);
+    }
+
+    @Test
+    void getCategories_withEmptyDatabase_returnsEmptyList() {
+        when(categoryRepo.findAll()).thenReturn(Collections.emptyList());
+
+        List<CategoryDto> result = categoryService.getCategories();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void updateCategory_withUnicodeCharacters_handlesCorrectly() {
+        Category existing = new Category(22L, "Old");
+        when(categoryRepo.findCategoryByCategoryId(22L)).thenReturn(existing);
+        when(categoryRepo.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        org.example.ydgbackend.Dto.Category.UpdateCategoryDto dto = new org.example.ydgbackend.Dto.Category.UpdateCategoryDto();
+        dto.setCategoryId(22L);
+        dto.setCategoryName("カテゴリー");
+
+        boolean ok = categoryService.updateCategory(dto);
+
+        assertThat(ok).isTrue();
+        assertThat(existing.getCategoryName()).isEqualTo("カテゴリー");
+    }
+
+    @Test
+    void deleteCategory_cascadesCorrectly_whenNoDependencies() {
+        Category category = new Category(6L, "Isolated");
+        when(categoryRepo.findCategoryByCategoryId(6L)).thenReturn(category);
+        when(brandCategoryRepo.findBrandCategoriesByCategory(category)).thenReturn(Collections.emptyList());
+
+        boolean result = categoryService.deleteCategory(6L);
+
+        assertThat(result).isTrue();
+        verify(categoryRepo).delete(category);
     }
 }

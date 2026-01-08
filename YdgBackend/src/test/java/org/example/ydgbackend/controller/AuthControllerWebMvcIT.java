@@ -76,5 +76,116 @@ class AuthControllerWebMvcIT {
                         .content(body))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void login_worker_success_returnsToken() throws Exception {
+        org.example.ydgbackend.Entity.WerehouseWorker worker = new org.example.ydgbackend.Entity.WerehouseWorker();
+        worker.setEmail("worker@example.com");
+        worker.setPassword("$2a$enc");
+
+        when(adminRepo.findByEmail("worker@example.com")).thenReturn(null);
+        when(workerRepo.findByEmail("worker@example.com")).thenReturn(worker);
+        when(passwordEncoder.matches("secret", "$2a$enc")).thenReturn(true);
+        when(jwtService.generateToken(anyString(), org.mockito.ArgumentMatchers.anyMap())).thenReturn("worker-token");
+
+        String body = "{\n  \"email\": \"worker@example.com\",\n  \"password\": \"secret\"\n}";
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("worker-token"))
+                .andExpect(jsonPath("$.role").value("WORKER"));
+    }
+
+    @Test
+    void login_admin_wrongPassword_returns401() throws Exception {
+        Admin admin = new Admin();
+        admin.setEmail("admin@example.com");
+        admin.setPassword("$2a$enc");
+
+        when(adminRepo.findByEmail("admin@example.com")).thenReturn(admin);
+        when(passwordEncoder.matches("wrong", "$2a$enc")).thenReturn(false);
+
+        String body = "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"wrong\"\n}";
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_worker_wrongPassword_returns401() throws Exception {
+        org.example.ydgbackend.Entity.WerehouseWorker worker = new org.example.ydgbackend.Entity.WerehouseWorker();
+        worker.setEmail("worker@example.com");
+        worker.setPassword("$2a$enc");
+
+        when(adminRepo.findByEmail("worker@example.com")).thenReturn(null);
+        when(workerRepo.findByEmail("worker@example.com")).thenReturn(worker);
+        when(passwordEncoder.matches("wrong", "$2a$enc")).thenReturn(false);
+
+        String body = "{\n  \"email\": \"worker@example.com\",\n  \"password\": \"wrong\"\n}";
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_withInvalidJson_returns400() throws Exception {
+        String invalidBody = "{\n  \"email\": invalid\n}";
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void login_withMissingFields_handlesGracefully() throws Exception {
+        String body = "{\n  \"email\": \"test@example.com\"\n}";
+
+        when(adminRepo.findByEmail("test@example.com")).thenReturn(null);
+        when(workerRepo.findByEmail("test@example.com")).thenReturn(null);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_withSpecialCharactersInEmail_handlesCorrectly() throws Exception {
+        Admin admin = new Admin();
+        admin.setEmail("user+tag@example.com");
+        admin.setPassword("$2a$enc");
+
+        when(adminRepo.findByEmail("user+tag@example.com")).thenReturn(admin);
+        when(passwordEncoder.matches("secret", "$2a$enc")).thenReturn(true);
+        when(jwtService.generateToken(anyString(), org.mockito.ArgumentMatchers.anyMap())).thenReturn("token");
+
+        String body = "{\n  \"email\": \"user+tag@example.com\",\n  \"password\": \"secret\"\n}";
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("token"));
+    }
+
+    @Test
+    void login_withEmptyEmail_returns401() throws Exception {
+        String body = "{\n  \"email\": \"\",\n  \"password\": \"secret\"\n}";
+
+        when(adminRepo.findByEmail("")).thenReturn(null);
+        when(workerRepo.findByEmail("")).thenReturn(null);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
 }
 

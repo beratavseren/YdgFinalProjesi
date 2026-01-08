@@ -23,7 +23,6 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -63,13 +62,11 @@ class BrandServiceTest {
         Brand brand = new Brand(5L, "Old");
         when(brandRepo.findByBrandId(5L)).thenReturn(brand);
 
-        // Existing relations
         List<BrandCategory> existing = new ArrayList<>();
         existing.add(new BrandCategory(100L, brand, new Category(1L, "A")));
         existing.add(new BrandCategory(101L, brand, new Category(2L, "B")));
         when(brandCategoryRepo.findBrandCategoriesByBrand(brand)).thenReturn(existing);
 
-        // Update keeps category 1, removes category 2, adds category 3
         UpdateBrandDto dto = new UpdateBrandDto();
         dto.setBrandId(5L);
         dto.setBrandName("New");
@@ -129,5 +126,198 @@ class BrandServiceTest {
         assertThatThrownBy(() -> brandService.getBrand(99L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Brand not found");
+    }
+
+    @Test
+    void addBrand_withMultipleCategories_createsAllRelations() {
+        AddBrandDto dto = new AddBrandDto();
+        dto.setBrandName("Samsung");
+        dto.setCategoryDtos(Arrays.asList(
+                new CategoryDto(1L, "Electronics"),
+                new CategoryDto(2L, "Mobile"),
+                new CategoryDto(3L, "Appliances")
+        ));
+
+        Brand saved = new Brand(20L, "Samsung");
+        when(brandRepo.save(any(Brand.class))).thenReturn(saved);
+        when(categoryRepo.findCategoryByCategoryId(1L)).thenReturn(new Category(1L, "Electronics"));
+        when(categoryRepo.findCategoryByCategoryId(2L)).thenReturn(new Category(2L, "Mobile"));
+        when(categoryRepo.findCategoryByCategoryId(3L)).thenReturn(new Category(3L, "Appliances"));
+
+        boolean ok = brandService.addBrand(dto);
+
+        assertThat(ok).isTrue();
+        verify(brandRepo).save(any(Brand.class));
+        verify(brandCategoryRepo, times(3)).save(any(BrandCategory.class));
+    }
+
+    @Test
+    void addBrand_withEmptyCategories_createsBrandOnly() {
+        AddBrandDto dto = new AddBrandDto();
+        dto.setBrandName("Generic");
+        dto.setCategoryDtos(Collections.emptyList());
+
+        Brand saved = new Brand(21L, "Generic");
+        when(brandRepo.save(any(Brand.class))).thenReturn(saved);
+
+        boolean ok = brandService.addBrand(dto);
+
+        assertThat(ok).isTrue();
+        verify(brandRepo).save(any(Brand.class));
+        verify(brandCategoryRepo, never()).save(any(BrandCategory.class));
+    }
+
+    @Test
+    void addBrand_handlesException_returnsFalse() {
+        AddBrandDto dto = new AddBrandDto();
+        dto.setBrandName("Failing");
+        dto.setCategoryDtos(Arrays.asList(new CategoryDto(1L, "Cat")));
+
+        when(brandRepo.save(any(Brand.class))).thenThrow(new jakarta.transaction.TransactionalException("DB error", new RuntimeException("DB error")));
+
+        boolean ok = brandService.addBrand(dto);
+
+        assertThat(ok).isFalse();
+    }
+
+    @Test
+    void updateBrand_withComplexCategoryChanges_handlesCorrectly() {
+        Brand brand = new Brand(10L, "Original");
+        when(brandRepo.findByBrandId(10L)).thenReturn(brand);
+
+        BrandCategory bc1 = new BrandCategory(1L, brand, new Category(1L, "Cat1"));
+        BrandCategory bc2 = new BrandCategory(2L, brand, new Category(2L, "Cat2"));
+        BrandCategory bc3 = new BrandCategory(3L, brand, new Category(3L, "Cat3"));
+        List<BrandCategory> existing = new ArrayList<>();
+        existing.add(bc1);
+        existing.add(bc2);
+        existing.add(bc3);
+        when(brandCategoryRepo.findBrandCategoriesByBrand(brand)).thenReturn(existing);
+
+        UpdateBrandDto dto = new UpdateBrandDto();
+        dto.setBrandId(10L);
+        dto.setBrandName("Updated Complex");
+        dto.setUpdatedCategoryList(Collections.singletonList(new CategoryDto(1L, "Cat1")));
+        dto.setAddedCategoryList(Arrays.asList(
+                new CategoryDto(4L, "Cat4"),
+                new CategoryDto(5L, "Cat5")
+        ));
+
+        when(categoryRepo.findCategoryByCategoryId(4L)).thenReturn(new Category(4L, "Cat4"));
+        when(categoryRepo.findCategoryByCategoryId(5L)).thenReturn(new Category(5L, "Cat5"));
+
+        boolean ok = brandService.updateBrand(dto);
+
+        assertThat(ok).isTrue();
+        verify(brandCategoryRepo, atLeast(1)).delete(any(BrandCategory.class));
+        verify(brandCategoryRepo, times(2)).save(any(BrandCategory.class));
+        verify(brandRepo).save(brand);
+        assertThat(brand.getBrandName()).isEqualTo("Updated Complex");
+    }
+
+    @Test
+    void updateBrand_withNoCategoryChanges_onlyUpdatesName() {
+        Brand brand = new Brand(11L, "Old Name");
+        when(brandRepo.findByBrandId(11L)).thenReturn(brand);
+
+        BrandCategory bc1 = new BrandCategory(1L, brand, new Category(1L, "Cat1"));
+        List<BrandCategory> existing = new ArrayList<>();
+        existing.add(bc1);
+        when(brandCategoryRepo.findBrandCategoriesByBrand(brand)).thenReturn(existing);
+
+        UpdateBrandDto dto = new UpdateBrandDto();
+        dto.setBrandId(11L);
+        dto.setBrandName("New Name");
+        dto.setUpdatedCategoryList(Collections.singletonList(new CategoryDto(1L, "Cat1")));
+        dto.setAddedCategoryList(Collections.emptyList());
+
+        boolean ok = brandService.updateBrand(dto);
+
+        assertThat(ok).isTrue();
+        verify(brandCategoryRepo, never()).delete(any(BrandCategory.class));
+        verify(brandCategoryRepo, never()).save(any(BrandCategory.class));
+        verify(brandRepo).save(brand);
+        assertThat(brand.getBrandName()).isEqualTo("New Name");
+    }
+
+    @Test
+    void updateBrand_handlesException_returnsFalse() {
+        when(brandRepo.findByBrandId(12L)).thenThrow(new RuntimeException("DB error"));
+
+        UpdateBrandDto dto = new UpdateBrandDto();
+        dto.setBrandId(12L);
+        dto.setBrandName("Fail");
+
+        boolean ok = brandService.updateBrand(dto);
+
+        assertThat(ok).isFalse();
+    }
+
+    @Test
+    void deleteBrand_withMultipleProducts_returnsFalse() {
+        Brand brand = new Brand(13L, "Popular");
+        when(brandRepo.findByBrandId(13L)).thenReturn(brand);
+        when(productRepo.findProductsByBrand(brand)).thenReturn(Arrays.asList(
+                new Product(), new Product(), new Product()
+        ));
+
+        boolean ok = brandService.deleteBrand(13L);
+
+        assertThat(ok).isFalse();
+        verify(brandRepo, never()).delete(any());
+        verify(brandCategoryRepo, never()).deleteBrandCategoriesByBrand(any());
+    }
+
+    @Test
+    void deleteBrand_handlesException_returnsFalse() {
+        when(brandRepo.findByBrandId(14L)).thenThrow(new RuntimeException("DB error"));
+
+        boolean ok = brandService.deleteBrand(14L);
+
+        assertThat(ok).isFalse();
+    }
+
+    @Test
+    void getBrands_returnsEmptyList_whenNoBrands() {
+        when(brandRepo.findAll()).thenReturn(Collections.emptyList());
+
+        List<BrandDto> result = brandService.getBrands();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getBrands_returnsMultipleBrands_correctlyMapped() {
+        List<Brand> brands = Arrays.asList(
+                new Brand(1L, "Brand1"),
+                new Brand(2L, "Brand2"),
+                new Brand(3L, "Brand3")
+        );
+        when(brandRepo.findAll()).thenReturn(brands);
+
+        List<BrandDto> result = brandService.getBrands();
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).getBrandId()).isEqualTo(1L);
+        assertThat(result.get(0).getBrandName()).isEqualTo("Brand1");
+        assertThat(result.get(1).getBrandId()).isEqualTo(2L);
+        assertThat(result.get(1).getBrandName()).isEqualTo("Brand2");
+        assertThat(result.get(2).getBrandId()).isEqualTo(3L);
+        assertThat(result.get(2).getBrandName()).isEqualTo("Brand3");
+    }
+
+    @Test
+    void getBrands_handlesLargeDataset() {
+        List<Brand> brands = new ArrayList<>();
+        for (long i = 1; i <= 100; i++) {
+            brands.add(new Brand(i, "Brand" + i));
+        }
+        when(brandRepo.findAll()).thenReturn(brands);
+
+        List<BrandDto> result = brandService.getBrands();
+
+        assertThat(result).hasSize(100);
+        assertThat(result.get(0).getBrandId()).isEqualTo(1L);
+        assertThat(result.get(99).getBrandId()).isEqualTo(100L);
     }
 }

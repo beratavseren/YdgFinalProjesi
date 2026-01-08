@@ -13,7 +13,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -65,6 +67,7 @@ class ProductControllerWebMvcIT {
                 .andExpect(content().string("true"));
     }
 
+
     @Test
     void getProducts_returnsList() throws Exception {
         List<ProductDto> list = Arrays.asList(new ProductDto(1L, "A"), new ProductDto(2L, "B") );
@@ -92,6 +95,126 @@ class ProductControllerWebMvcIT {
 
         mockMvc.perform(get("/product/getProductByBarcodeNumber/999"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void addProduct_whenServiceReturnsFalse_returnsFalse() throws Exception {
+        when(productService.addProduct(any())).thenReturn(false);
+
+        String body = "{\n" +
+                "  \"productName\": \"Fail\",\n" +
+                "  \"barcodeNumber\": 123,\n" +
+                "  \"weigth\": 100,\n" +
+                "  \"volume\": 200,\n" +
+                "  \"brandDto\": { \"brandId\": 1, \"brandName\": \"Brand\" }\n" +
+                "}";
+
+        mockMvc.perform(post("/product/add")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(content().string("false"));
+    }
+
+    @Test
+    void deleteProduct_whenServiceThrowsException_handlesError() throws Exception {
+        // ProductService.deleteProduct exception fırlatıyor, bu yüzden 500 döner
+        when(productService.deleteProduct(99L)).thenThrow(new RuntimeException("Cannot delete"));
+
+        mockMvc.perform(delete("/product/delete/99"))
+                .andExpect(status().is5xxServerError());
+    }
+
+    @Test
+    void getProducts_withEmptyList_returnsEmptyArray() throws Exception {
+        when(productService.getProducts()).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/product/getProducts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void getProducts_withLargeList_returnsAll() throws Exception {
+        List<ProductDto> products = new ArrayList<>();
+        for (long i = 1; i <= 100; i++) {
+            products.add(new ProductDto(i, "Product" + i));
+        }
+        when(productService.getProducts()).thenReturn(products);
+
+        mockMvc.perform(get("/product/getProducts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(100))
+                .andExpect(jsonPath("$[0].productId").value(1))
+                .andExpect(jsonPath("$[99].productId").value(100));
+    }
+
+    @Test
+    void getDetailedProduct_withFullDetails_returnsCompleteDto() throws Exception {
+        DetailedProductDto dto = new DetailedProductDto();
+        dto.setProductId(50L);
+        dto.setProductName("Detailed Product");
+        dto.setBarcodeNumber(123456L);
+        when(productService.getDetailedProduct(50L)).thenReturn(dto);
+
+        mockMvc.perform(get("/product/getProduct/50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.productId").value(50))
+                .andExpect(jsonPath("$.productName").value("Detailed Product"))
+                .andExpect(jsonPath("$.barcodeNumber").value(123456));
+    }
+
+    @Test
+    void getDetailedProduct_whenNotFound_handlesException() throws Exception {
+        when(productService.getDetailedProduct(999L)).thenThrow(new RuntimeException("Not found"));
+
+        mockMvc.perform(get("/product/getProduct/999"))
+                .andExpect(status().is5xxServerError());
+    }
+
+    @Test
+    void getProductByBarcode_whenNotFound_handlesException() throws Exception {
+        when(productService.getDetailedProductByBarcodeNumber(888L)).thenThrow(new RuntimeException("Not found"));
+
+        mockMvc.perform(get("/product/getProductByBarcodeNumber/888"))
+                .andExpect(status().is5xxServerError());
+    }
+
+    @Test
+    void addProduct_withInvalidJson_returns400() throws Exception {
+        String invalidBody = "{\n  \"productName\": invalid\n}";
+
+        mockMvc.perform(post("/product/add")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void addProduct_withMissingFields_handlesGracefully() throws Exception {
+        when(productService.addProduct(any())).thenReturn(true);
+
+        String body = "{\n" +
+                "  \"productName\": \"Minimal\"\n" +
+                "}";
+
+        mockMvc.perform(post("/product/add")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getProductByBarcode_withLargeBarcode_handlesCorrectly() throws Exception {
+        DetailedProductDto dto = new DetailedProductDto();
+        dto.setBarcodeNumber(999999999999L);
+        when(productService.getDetailedProductByBarcodeNumber(999999999999L)).thenReturn(dto);
+
+        mockMvc.perform(get("/product/getProductByBarcodeNumber/999999999999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.barcodeNumber").value(999999999999L));
     }
 }
 
