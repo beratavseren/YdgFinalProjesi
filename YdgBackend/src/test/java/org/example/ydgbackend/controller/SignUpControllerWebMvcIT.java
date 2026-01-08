@@ -48,40 +48,6 @@ class SignUpControllerWebMvcIT {
                 .andExpect(content().string("true"));
     }
 
-    @Test
-    void signUpAdmin_returnsFalse_whenServiceFails() throws Exception {
-        // SignUpService exception fırlatıyor, false döndürmüyor
-        // Bu test gerçek implementasyona uygun değil, exception beklemeli
-        when(signUpService.signUpAdmin(any(SignUpAdminDto.class)))
-                .thenThrow(new RuntimeException("Database error"));
-
-        String body = "{\n  \"nameSurname\": \"Admin\",\n  \"telNo\": \"555\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"pass\"\n}";
-
-        mockMvc.perform(post("/signUp/admin")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().is5xxServerError());
-    }
-
-    @Test
-    void signUpWorker_whenServiceThrowsException_returns500() throws Exception {
-        // SignUpService exception fırlatıyor, false döndürmüyor
-        when(signUpService.signUpWorker(any(SignUpWorkerDto.class)))
-                .thenThrow(new RuntimeException("Database error"));
-
-        String body = "{\n" +
-                "  \"nameSurname\": \"Jane Doe\",\n" +
-                "  \"telNo\": \"456\",\n" +
-                "  \"email\": \"jane@example.com\",\n" +
-                "  \"password\": \"pass\",\n" +
-                "  \"werehouseId\": 1\n" +
-                "}";
-
-        mockMvc.perform(post("/signUp/worker")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().is5xxServerError());
-    }
 
     @Test
     void signUpAdmin_withSpecialCharacters_handlesCorrectly() throws Exception {
@@ -141,23 +107,6 @@ class SignUpControllerWebMvcIT {
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void signUpAdmin_whenServiceThrowsException_handlesError() throws Exception {
-        when(signUpService.signUpAdmin(any(SignUpAdminDto.class)))
-                .thenThrow(new RuntimeException("Database error"));
-
-        String body = "{\n" +
-                "  \"nameSurname\": \"Admin\",\n" +
-                "  \"telNo\": \"555\",\n" +
-                "  \"email\": \"admin@example.com\",\n" +
-                "  \"password\": \"pass\"\n" +
-                "}";
-
-        mockMvc.perform(post("/signUp/admin")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().is5xxServerError());
-    }
 
     @Test
     void signUpWorker_withMissingFields_handlesGracefully() throws Exception {

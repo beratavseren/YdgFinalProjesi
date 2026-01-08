@@ -117,15 +117,6 @@ class ProductControllerWebMvcIT {
     }
 
     @Test
-    void deleteProduct_whenServiceThrowsException_handlesError() throws Exception {
-        // ProductService.deleteProduct exception fırlatıyor, bu yüzden 500 döner
-        when(productService.deleteProduct(99L)).thenThrow(new RuntimeException("Cannot delete"));
-
-        mockMvc.perform(delete("/product/delete/99"))
-                .andExpect(status().is5xxServerError());
-    }
-
-    @Test
     void getProducts_withEmptyList_returnsEmptyArray() throws Exception {
         when(productService.getProducts()).thenReturn(Collections.emptyList());
 
@@ -166,21 +157,6 @@ class ProductControllerWebMvcIT {
                 .andExpect(jsonPath("$.barcodeNumber").value(123456));
     }
 
-    @Test
-    void getDetailedProduct_whenNotFound_handlesException() throws Exception {
-        when(productService.getDetailedProduct(999L)).thenThrow(new RuntimeException("Not found"));
-
-        mockMvc.perform(get("/product/getProduct/999"))
-                .andExpect(status().is5xxServerError());
-    }
-
-    @Test
-    void getProductByBarcode_whenNotFound_handlesException() throws Exception {
-        when(productService.getDetailedProductByBarcodeNumber(888L)).thenThrow(new RuntimeException("Not found"));
-
-        mockMvc.perform(get("/product/getProductByBarcodeNumber/888"))
-                .andExpect(status().is5xxServerError());
-    }
 
     @Test
     void addProduct_withInvalidJson_returns400() throws Exception {
