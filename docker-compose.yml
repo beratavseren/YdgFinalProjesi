@@ -69,7 +69,6 @@ services:
     build:
       context: ./ydgfrontend    # React dosyalarının, Dockerfile ve nginx.conf'un olduğu klasör
       args:
-        # React build sırasında bu değişkene ihtiyaç duyar (Runtime'da değil!)
         - REACT_APP_API_URL=${API_URL}
     container_name: ydg-frontend-container
     depends_on:

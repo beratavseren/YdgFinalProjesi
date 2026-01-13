@@ -44,35 +44,27 @@ public class AdminPagesTest {
         }
     }
 
-    // Helper method to simulate login (sets token in localStorage via JavaScript)
     private void simulateLogin(String token, String role) {
         driver.get(baseUrl + "/login");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
         
-        // Set token and role in localStorage via JavaScript
         ((org.openqa.selenium.JavascriptExecutor) driver).executeScript(
             "localStorage.setItem('token', arguments[0]); localStorage.setItem('role', arguments[1]);",
             token, role
         );
         
-        // Refresh to trigger authentication check
         driver.navigate().refresh();
     }
 
     @Test
     @DisplayName("Admin Dashboard sayfası görünmeli")
     void adminDashboard_shouldDisplay() {
-        // Note: This test assumes you have a valid token
-        // In a real scenario, you'd login first or use a test token
         driver.get(baseUrl + "/admin/dashboard");
         
-        // Should redirect to login if not authenticated
-        // If authenticated, should show dashboard
         wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
         
         String bodyText = driver.findElement(By.tagName("body")).getText();
         
-        // Either login page or dashboard
         assertThat(bodyText).isNotEmpty();
     }
 

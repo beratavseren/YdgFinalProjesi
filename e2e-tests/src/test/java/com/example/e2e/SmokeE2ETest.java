@@ -23,21 +23,17 @@ public class SmokeE2ETest {
     private WebDriver driver;
     private WebDriverWait wait;
 
-    // Jenkins/Docker ortamında servis ismini çözemezse localhost dener
     private final String baseUrl = System.getProperty("e2e.baseUrl", "http://localhost:3000");
 
     @BeforeEach
     void setup() throws MalformedURLException {
         ChromeOptions options = new ChromeOptions();
-        // Docker içindeki Chrome zaten headless gibidir ama yine de ekleyelim
         options.addArguments("--headless=new");
         options.addArguments("--disable-gpu");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--remote-allow-origins=*");
 
-        // KRİTİK NOKTA: ChromeDriver yerine RemoteWebDriver kullanıyoruz
-        // Bu sayede testler, Docker içindeki 'selenium-chrome' konteynerine bağlanır.
         driver = new RemoteWebDriver(new URL("http://localhost:4444/wd/hub"), options);
 
         wait = new WebDriverWait(driver, Duration.ofSeconds(15));
@@ -55,7 +51,6 @@ public class SmokeE2ETest {
     void homePage_shouldRedirectToLogin() {
         driver.get(baseUrl + "/");
 
-        // Ana sayfa giriş yapmamış kullanıcıyı login'e yönlendirmeli
         wait.until(ExpectedConditions.urlContains("/login"));
         String bodyText = driver.findElement(By.tagName("body")).getText();
         assertThat(bodyText).contains("Login");
@@ -70,10 +65,8 @@ public class SmokeE2ETest {
             wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
             String bodyText = driver.findElement(By.tagName("body")).getText();
             
-            // Login sayfasında olmalı
             assertThat(bodyText).contains("Login");
             
-            // Form elemanları olmalı
             WebElement emailInput = wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("input[type='email']")
             ));
@@ -96,10 +89,8 @@ public class SmokeE2ETest {
             WebElement body = wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
             String bodyText = body.getText();
 
-            // Sayfa yüklendi, içerik olmalı
             assertThat(bodyText).isNotEmpty();
             
-            // Önemli hata mesajları olmamalı
             assertThat(bodyText).doesNotContain("Cannot GET");
             assertThat(bodyText).doesNotContain("404");
             assertThat(bodyText).doesNotContain("Network Error");

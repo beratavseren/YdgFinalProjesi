@@ -80,9 +80,7 @@ public class NavigationTest {
         driver.get(baseUrl + "/invalid-route");
         wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
         
-        // Should redirect to login for unauthenticated users
         String currentUrl = driver.getCurrentUrl();
-        // Either stays on invalid route or redirects to login
         assertThat(currentUrl).isNotNull();
     }
 
